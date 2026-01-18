@@ -58,13 +58,9 @@ fi
 # Check if .agent already exists
 if [ -d "$TARGET_DIR/.agent" ]; then
     echo -e "${YELLOW}⚠️  .agent directory already exists.${NC}"
-    read -p "   Overwrite? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${YELLOW}Aborted.${NC}"
-        exit 1
-    fi
-    rm -rf "$TARGET_DIR/.agent"
+    BACKUP_NAME=".agent.backup.$(date +%Y%m%d-%H%M%S)"
+    echo -e "${YELLOW}📦 Backing up to $BACKUP_NAME...${NC}"
+    mv "$TARGET_DIR/.agent" "$TARGET_DIR/$BACKUP_NAME"
 fi
 
 # ============================================================================
