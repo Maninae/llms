@@ -57,10 +57,9 @@ fi
 
 # Check if .agent already exists
 if [ -d "$TARGET_DIR/.agent" ]; then
-    echo -e "${YELLOW}⚠️  .agent directory already exists.${NC}"
-    BACKUP_NAME=".agent.backup.$(date +%Y%m%d-%H%M%S)"
-    echo -e "${YELLOW}📦 Backing up to $BACKUP_NAME...${NC}"
-    mv "$TARGET_DIR/.agent" "$TARGET_DIR/$BACKUP_NAME"
+    echo -e "${RED}❌ Error: .agent directory already exists at $TARGET_DIR/.agent${NC}"
+    echo -e "${YELLOW}   This repo is already initialized. Use update.sh to refresh symlinks.${NC}"
+    exit 1
 fi
 
 # ============================================================================
