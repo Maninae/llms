@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# ============================================================================
+# LLM UPDATE - Convert Existing Repos to Use Symlinks
+# ============================================================================
+#
+# This script updates an existing repo to use symlinks from ~/.llms/
+# instead of local copies of skills and workflows.
+#
+# What it does:
+#   - Backs up existing .agent/skills and .agent/workflows
+#   - Replaces them with symlinks to ~/.llms/
+#   - Updates .claude/commands/ with latest workflows
+#   - Creates missing symlinks (CLAUDE.md, .cursorrules)
+#
+# Usage:
+#   ~/.llms/scripts/update.sh              # Update current directory
+#   ~/.llms/scripts/update.sh /path/to/repo  # Update specific directory
+#
+# ============================================================================
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+LLMS_DIR="$HOME/.llms"
+TARGET_DIR="${1:-.}"
+TARGET_DIR=$(cd "$TARGET_DIR" && pwd)
+
+echo -e "${BLUE}🔄 LLM UPDATE - Symlink Conversion${NC}"
+echo -e "${BLUE}====================================${NC}"
+echo ""
+echo -e "Updating: ${GREEN}$TARGET_DIR${NC}"
+echo ""
+
+# Verify prerequisites
+if [ ! -d "$LLMS_DIR" ]; then
+    echo -e "${RED}❌ Error: $LLMS_DIR does not exist!${NC}"
+    exit 1
+fi
+
+if [ ! -d "$TARGET_DIR/.agent" ]; then
+    echo -e "${RED}❌ Error: No .agent directory found. Run init.sh first.${NC}"
+    exit 1
+fi
+
+# ============================================================================
+# Backup and replace skills
+# ============================================================================
+if [ -d "$TARGET_DIR/.agent/skills" ] && [ ! -L "$TARGET_DIR/.agent/skills" ]; then
+    echo -e "${YELLOW}📦 Backing up .agent/skills to .agent/skills.backup${NC}"
+    mv "$TARGET_DIR/.agent/skills" "$TARGET_DIR/.agent/skills.backup"
+fi
+
+if [ -d "$LLMS_DIR/skills" ]; then
+    ln -sfn "$LLMS_DIR/skills" "$TARGET_DIR/.agent/skills"
+    echo -e "${GREEN}✓ .agent/skills -> ~/.llms/skills${NC}"
+fi
+
+# ============================================================================
+# Backup and replace workflows
+# ============================================================================
+if [ -d "$TARGET_DIR/.agent/workflows" ] && [ ! -L "$TARGET_DIR/.agent/workflows" ]; then
+    echo -e "${YELLOW}📦 Backing up .agent/workflows to .agent/workflows.backup${NC}"
+    mv "$TARGET_DIR/.agent/workflows" "$TARGET_DIR/.agent/workflows.backup"
+fi
+
+if [ -d "$LLMS_DIR/workflows" ]; then
+    ln -sfn "$LLMS_DIR/workflows" "$TARGET_DIR/.agent/workflows"
+    echo -e "${GREEN}✓ .agent/workflows -> ~/.llms/workflows${NC}"
+fi
+
+# ============================================================================
+# Update .claude/commands/
+# ============================================================================
+if [ -d "$TARGET_DIR/.claude/commands" ]; then
+    echo -e "${GREEN}📝 Updating .claude/commands/ with latest workflows...${NC}"
+    for workflow in "$LLMS_DIR/workflows"/*.md; do
+        if [ -f "$workflow" ]; then
+            name=$(basename "$workflow")
+            cp "$workflow" "$TARGET_DIR/.claude/commands/$name"
+        fi
+    done
+    echo -e "${GREEN}✓ Updated Claude commands${NC}"
+fi
+
+# ============================================================================
+# Ensure symlinks exist
+# ============================================================================
+echo -e "${GREEN}🔗 Ensuring tool symlinks...${NC}"
+
+# CLAUDE.md -> GEMINI.md
+if [ -f "$TARGET_DIR/GEMINI.md" ] && [ ! -L "$TARGET_DIR/CLAUDE.md" ]; then
+    rm -f "$TARGET_DIR/CLAUDE.md"
+    ln -sf GEMINI.md "$TARGET_DIR/CLAUDE.md"
+    echo -e "   ✓ CLAUDE.md -> GEMINI.md"
+fi
+
+# .cursorrules -> GEMINI.md
+if [ -f "$TARGET_DIR/GEMINI.md" ] && [ ! -L "$TARGET_DIR/.cursorrules" ]; then
+    rm -f "$TARGET_DIR/.cursorrules"
+    ln -sf GEMINI.md "$TARGET_DIR/.cursorrules"
+    echo -e "   ✓ .cursorrules -> GEMINI.md"
+fi
+
+# ============================================================================
+# Done
+# ============================================================================
+echo ""
+echo -e "${GREEN}✅ Update complete!${NC}"
+echo ""
+echo -e "Skills and workflows now symlinked from ${CYAN}~/.llms/${NC}"
+echo -e "Updates to ~/.llms/ will automatically propagate to this repo."
+echo ""
+
+# Show any backups
+if [ -d "$TARGET_DIR/.agent/skills.backup" ] || [ -d "$TARGET_DIR/.agent/workflows.backup" ]; then
+    echo -e "${YELLOW}Backups created:${NC}"
+    [ -d "$TARGET_DIR/.agent/skills.backup" ] && echo -e "  - .agent/skills.backup"
+    [ -d "$TARGET_DIR/.agent/workflows.backup" ] && echo -e "  - .agent/workflows.backup"
+    echo -e "${YELLOW}Delete these after verifying everything works.${NC}"
+fi
